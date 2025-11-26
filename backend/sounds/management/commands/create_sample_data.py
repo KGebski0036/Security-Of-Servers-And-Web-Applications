@@ -3,19 +3,33 @@ Management command to create sample data for SoundVault
 Run with: python manage.py create_sample_data
 """
 from django.core.management.base import BaseCommand
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 from sounds.models import Sound, Tag, Comment, Favorite
-from django.core.files import File
-from io import BytesIO
+from django.db import transaction
+import logging
 
+# Get the custom user model safely
+User = get_user_model()
+logger = logging.getLogger(__name__)
 
 class Command(BaseCommand):
-    help = 'Creates sample data for SoundVault (tags, sounds, comments, favorites)'
+    help = 'Creates sample data for SoundVault safely and idempotently'
 
     def handle(self, *args, **options):
-        self.stdout.write('Creating sample data...')
+        self.stdout.write('Checking for sample data...')
 
-        # Create admin user if it doesn't exist
+        try:
+            # Atomic block ensures all-or-nothing execution
+            with transaction.atomic():
+                self.create_data()
+                self.stdout.write(self.style.SUCCESS('Sample data check complete.'))
+        except Exception as e:
+            # Log the error but don't crash the container (useful for auto-scaling race conditions)
+            self.stdout.write(self.style.WARNING(f"Note: Data creation skipped or rolled back due to: {e}"))
+
+    def create_data(self):
+        # 1. Create Users
+        # We use get_or_create to handle race conditions safely
         admin_user, created = User.objects.get_or_create(
             username='admin',
             defaults={
@@ -25,11 +39,10 @@ class Command(BaseCommand):
             }
         )
         if created:
-            admin_user.set_password('admin123')
+            admin_user.set_password('ffFdbgBGE42vwervr#!')
             admin_user.save()
-            self.stdout.write(self.style.SUCCESS(f'Created admin user: admin/admin123'))
+            self.stdout.write(f'Created admin user: {admin_user.username}')
 
-        # Create regular user
         regular_user, created = User.objects.get_or_create(
             username='testuser',
             defaults={
@@ -40,9 +53,9 @@ class Command(BaseCommand):
         if created:
             regular_user.set_password('test123')
             regular_user.save()
-            self.stdout.write(self.style.SUCCESS(f'Created test user: testuser/test123'))
+            self.stdout.write(f'Created regular user: {regular_user.username}')
 
-        # Create tags
+        # 2. Create Tags
         tag_names = [
             'Nature', 'Water', 'Relaxation', 'Birds', 'Morning',
             'Weather', 'Rain', 'Dramatic', 'Urban', 'Traffic',
@@ -50,18 +63,16 @@ class Command(BaseCommand):
             'Cozy', 'Indoor', 'Ocean', 'Forest', 'Piano'
         ]
         
-        tags = {}
+        tags_cache = {}
         for tag_name in tag_names:
-            tag, created = Tag.objects.get_or_create(name=tag_name)
-            tags[tag_name] = tag
-            if created:
-                self.stdout.write(self.style.SUCCESS(f'Created tag: {tag_name}'))
+            tag, _ = Tag.objects.get_or_create(name=tag_name)
+            tags_cache[tag_name] = tag
 
-        # Create sample sounds (without actual MP3 files - you'll need to add those)
+        # 3. Create Sounds
         sample_sounds = [
             {
                 'name': 'Ocean Waves',
-                'description': 'Peaceful ocean waves recorded at sunset on a calm beach. Perfect for relaxation and meditation.',
+                'description': 'Peaceful ocean waves recorded at sunset on a calm beach.',
                 'tags': ['Nature', 'Water', 'Relaxation', 'Ocean'],
                 'uploaded_by': admin_user
             },
@@ -104,21 +115,19 @@ class Command(BaseCommand):
                 defaults={
                     'description': sound_data['description'],
                     'uploaded_by': sound_data['uploaded_by'],
-                    # Note: mp3_file and image are optional for this command
-                    # You'll need to add actual files manually or via admin
                 }
             )
             
+            # Ensure tags are set (even if sound already existed, we confirm tags are there)
+            current_tags = [tags_cache[t] for t in sound_data['tags'] if t in tags_cache]
+            sound.tags.add(*current_tags)
+            
             if created:
-                # Add tags
-                tag_objects = [tags[tag_name] for tag_name in sound_data['tags'] if tag_name in tags]
-                sound.tags.set(tag_objects)
-                created_sounds.append(sound)
-                self.stdout.write(self.style.SUCCESS(f'Created sound: {sound.name}'))
-            else:
-                created_sounds.append(sound)
+                self.stdout.write(f'Created sound: {sound.name}')
+            
+            created_sounds.append(sound)
 
-        # Create some comments
+        # 4. Create Comments
         if created_sounds:
             comments_data = [
                 {'sound': created_sounds[0], 'user': regular_user, 'content': 'Amazing sound quality!'},
@@ -127,29 +136,14 @@ class Command(BaseCommand):
                 {'sound': created_sounds[2], 'user': regular_user, 'content': 'Perfect for background ambience.'},
             ]
             
-            for comment_data in comments_data:
+            for c_data in comments_data:
                 Comment.objects.get_or_create(
-                    sound=comment_data['sound'],
-                    user=comment_data['user'],
-                    defaults={'content': comment_data['content']}
+                    sound=c_data['sound'],
+                    user=c_data['user'],
+                    defaults={'content': c_data['content']}
                 )
-            self.stdout.write(self.style.SUCCESS(f'Created {len(comments_data)} comments'))
 
-        # Create some favorites
+        # 5. Create Favorites
         if created_sounds and regular_user:
-            Favorite.objects.get_or_create(
-                user=regular_user,
-                sound=created_sounds[0]
-            )
-            Favorite.objects.get_or_create(
-                user=regular_user,
-                sound=created_sounds[1]
-            )
-            self.stdout.write(self.style.SUCCESS('Created sample favorites'))
-
-        self.stdout.write(self.style.SUCCESS('\nSample data created successfully!'))
-        self.stdout.write('\nUsers created:')
-        self.stdout.write('  - admin/admin123 (Admin)')
-        self.stdout.write('  - testuser/test123 (Regular user)')
-        self.stdout.write('\nNote: You need to upload MP3 files and images via admin panel or API.')
-
+            Favorite.objects.get_or_create(user=regular_user, sound=created_sounds[0])
+            Favorite.objects.get_or_create(user=regular_user, sound=created_sounds[1])

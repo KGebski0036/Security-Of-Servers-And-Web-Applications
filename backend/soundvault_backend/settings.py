@@ -19,6 +19,8 @@ SECRET_KEY = config('SECRET_KEY', default='django-insecure-y-!8n_d_ev9ujlo=71-qn
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=True, cast=bool)
 
+# ALLOWED_HOSTS: In production, App Runner will set this via environment variable
+# Default to localhost for development
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,::1', cast=Csv())
 
 
@@ -78,10 +80,10 @@ WSGI_APPLICATION = 'soundvault_backend.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': config('DB_NAME', default='soundvault'),
-        'USER': config('DB_USER', default='postgres'),
-        'PASSWORD': config('DB_PASSWORD', default='postgres'),
-        'HOST': config('DB_HOST', default='localhost'),
+        'NAME': config('DB_NAME'),          # no default in prod
+        'USER': config('DB_USER'),          # no default in prod
+        'PASSWORD': config('DB_PASSWORD'),  # no default in prod
+        'HOST': config('DB_HOST'),
         'PORT': config('DB_PORT', default='5432'),
     }
 }
@@ -137,6 +139,23 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
+# Security settings for production (behind proxy like App Runner)
+# Trust proxy headers to detect HTTPS
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+USE_TLS = config('USE_TLS', default=not DEBUG, cast=bool)
+
+# Force HTTPS in production
+if USE_TLS and not DEBUG:
+    SECURE_SSL_REDIRECT = False  # App Runner handles SSL termination
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+
+# Base URL for building absolute URLs (for media files)
+# In production, this should be set to the App Runner HTTPS URL
+BASE_URL = config('BASE_URL', default='')
+if BASE_URL and not BASE_URL.endswith('/'):
+    BASE_URL = f'{BASE_URL}/'
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
@@ -173,6 +192,8 @@ SIMPLE_JWT = {
 }
 
 # CORS settings
+# Read from environment variable, default to localhost for development
+# In production (App Runner), this will be set to the CloudFront domain
 CORS_ALLOWED_ORIGINS = config(
     'CORS_ALLOWED_ORIGINS',
     default='http://localhost:8080,http://127.0.0.1:8080',

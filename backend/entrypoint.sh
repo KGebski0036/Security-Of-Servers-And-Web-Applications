@@ -13,6 +13,9 @@ python manage.py migrate --noinput
 echo "Collecting static files..."
 python manage.py collectstatic --noinput || true
 
+echo "Create admin account and some data"
+python manage.py create_sample_data
+
 echo "Starting server..."
 exec "$@"
 

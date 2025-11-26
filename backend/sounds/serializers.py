@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
+from django.conf import settings
 from .models import Sound, Tag, Comment, Favorite
 
 
@@ -36,7 +37,17 @@ class SoundListSerializer(serializers.ModelSerializer):
         if obj.image:
             request = self.context.get('request')
             if request:
-                return request.build_absolute_uri(obj.image.url)
+                url = request.build_absolute_uri(obj.image.url)
+                # Force HTTPS - App Runner serves over HTTPS
+                # Check if behind proxy (X-Forwarded-Proto header) or force HTTPS
+                if url.startswith('http://'):
+                    # Check for proxy header or force HTTPS in production
+                    if request.META.get('HTTP_X_FORWARDED_PROTO') == 'https' or not settings.DEBUG:
+                        url = url.replace('http://', 'https://')
+                return url
+            # Fallback: use BASE_URL if available
+            if settings.BASE_URL:
+                return f"{settings.BASE_URL.rstrip('/')}{obj.image.url}"
             return obj.image.url
         return None
 
@@ -44,7 +55,17 @@ class SoundListSerializer(serializers.ModelSerializer):
         if obj.mp3_file:
             request = self.context.get('request')
             if request:
-                return request.build_absolute_uri(obj.mp3_file.url)
+                url = request.build_absolute_uri(obj.mp3_file.url)
+                # Force HTTPS - App Runner serves over HTTPS
+                # Check if behind proxy (X-Forwarded-Proto header) or force HTTPS
+                if url.startswith('http://'):
+                    # Check for proxy header or force HTTPS in production
+                    if request.META.get('HTTP_X_FORWARDED_PROTO') == 'https' or not settings.DEBUG:
+                        url = url.replace('http://', 'https://')
+                return url
+            # Fallback: use BASE_URL if available
+            if settings.BASE_URL:
+                return f"{settings.BASE_URL.rstrip('/')}{obj.mp3_file.url}"
             return obj.mp3_file.url
         return None
 
@@ -78,7 +99,17 @@ class SoundDetailSerializer(serializers.ModelSerializer):
         if obj.image:
             request = self.context.get('request')
             if request:
-                return request.build_absolute_uri(obj.image.url)
+                url = request.build_absolute_uri(obj.image.url)
+                # Force HTTPS - App Runner serves over HTTPS
+                # Check if behind proxy (X-Forwarded-Proto header) or force HTTPS
+                if url.startswith('http://'):
+                    # Check for proxy header or force HTTPS in production
+                    if request.META.get('HTTP_X_FORWARDED_PROTO') == 'https' or not settings.DEBUG:
+                        url = url.replace('http://', 'https://')
+                return url
+            # Fallback: use BASE_URL if available
+            if settings.BASE_URL:
+                return f"{settings.BASE_URL.rstrip('/')}{obj.image.url}"
             return obj.image.url
         return None
 
@@ -86,7 +117,17 @@ class SoundDetailSerializer(serializers.ModelSerializer):
         if obj.mp3_file:
             request = self.context.get('request')
             if request:
-                return request.build_absolute_uri(obj.mp3_file.url)
+                url = request.build_absolute_uri(obj.mp3_file.url)
+                # Force HTTPS - App Runner serves over HTTPS
+                # Check if behind proxy (X-Forwarded-Proto header) or force HTTPS
+                if url.startswith('http://'):
+                    # Check for proxy header or force HTTPS in production
+                    if request.META.get('HTTP_X_FORWARDED_PROTO') == 'https' or not settings.DEBUG:
+                        url = url.replace('http://', 'https://')
+                return url
+            # Fallback: use BASE_URL if available
+            if settings.BASE_URL:
+                return f"{settings.BASE_URL.rstrip('/')}{obj.mp3_file.url}"
             return obj.mp3_file.url
         return None
 
