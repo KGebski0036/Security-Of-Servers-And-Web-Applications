@@ -6,7 +6,13 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from rest_framework.routers import DefaultRouter
-from sounds.views import SoundViewSet, TagViewSet, CommentViewSet, FavoriteViewSet
+from sounds.views import (
+    SoundViewSet,
+    TagViewSet,
+    CommentViewSet,
+    FavoriteViewSet,
+    whoami,
+)
 from sounds.auth_views import register, login, logout, me
 from rest_framework_simplejwt.views import TokenRefreshView
 
@@ -29,6 +35,7 @@ urlpatterns = [
     path('api/auth/logout/', logout, name='logout'),
     path('api/auth/me/', me, name='me'),
     path('api/auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('api/whoami/', whoami, name='whoami'),
     
     # Note: Admin sound routes are handled by the SoundViewSet
     # POST /api/sounds/ - create (admin only)

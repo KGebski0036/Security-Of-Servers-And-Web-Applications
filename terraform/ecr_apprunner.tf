@@ -119,6 +119,8 @@ resource "aws_apprunner_service" "backend" {
           # App Runner service URL with HTTPS (will be set after service creation)
           # Note: This is a self-reference that will be updated after the service is created
           USE_TLS = "True"
+          # Service name exposed by the /api/whoami endpoint to show load balancing
+          APP_RUNNER_SERVICE_NAME = "${var.project_name}-backend"
         }
         runtime_environment_secrets = {
           DB_PASSWORD = aws_secretsmanager_secret.db_password.arn

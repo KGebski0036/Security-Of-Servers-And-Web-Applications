@@ -1,5 +1,5 @@
 from rest_framework import viewsets, status, filters, serializers
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
 from django.contrib.auth.models import User
@@ -9,6 +9,9 @@ from .serializers import (
     SoundListSerializer, SoundDetailSerializer, SoundCreateUpdateSerializer,
     TagSerializer, CommentSerializer, FavoriteSerializer, UserSerializer
 )
+import socket
+import os
+from datetime import datetime, timezone
 
 
 class SoundViewSet(viewsets.ModelViewSet):
@@ -179,3 +182,17 @@ class FavoriteViewSet(viewsets.ModelViewSet):
                 {"error": "Favorite not found."},
                 status=status.HTTP_404_NOT_FOUND
             )
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def whoami(request):
+    """Expose container identity details to show App Runner load balancing."""
+    service_name = os.environ.get("APP_RUNNER_SERVICE_NAME", "unknown")
+    return Response(
+        {
+            "hostname": socket.gethostname(),
+            "app_runner_service": service_name,
+            "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+        }
+    )
