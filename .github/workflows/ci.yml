@@ -23,7 +23,13 @@ jobs:
           cache: "pip"
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: |
+          pip install -r requirements.txt
+          pip install bandit
+
+      # SAST: Python static analysis (Bandit)
+      - name: SAST - Bandit security scan
+        run: bandit -r . -ll -ii
 
       - name: Run backend tests (SQLite)
         env:
@@ -55,6 +61,10 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      # SAST: Node dependency vulnerability check
+      - name: SAST - npm audit
+        run: npm audit --audit-level=moderate
 
       - name: Lint
         run: npm run lint
