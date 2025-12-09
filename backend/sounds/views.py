@@ -12,8 +12,9 @@ from .serializers import (
 import socket
 import os
 from datetime import datetime, timezone
+import logging
 
-
+security_logger = logging.getLogger("security")
 class SoundViewSet(viewsets.ModelViewSet):
     """
     ViewSet for Sound model.
