@@ -65,6 +65,7 @@ jobs:
         uses: zaproxy/action-baseline@v0.12.0
         with:
           target: "http://localhost:8000"
-          fail_on_error: false
+          fail_action: false
           allow_issue_writing: false
           cmd_options: "-a"
+          artifact_name: ZAP-Reports-v1
