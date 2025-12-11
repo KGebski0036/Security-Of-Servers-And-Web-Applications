@@ -1,0 +1,77 @@
+name: DAST Scan
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  zap_scan:
+    name: OWASP ZAP Baseline Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: pip install -r requirements.txt
+
+      - name: Run migrations
+        working-directory: backend
+        env:
+          USE_SQLITE: "1"
+          SECRET_KEY: dummy
+          DEBUG: "1"
+          DB_NAME: dummy
+          DB_USER: dummy
+          DB_PASSWORD: dummy
+          DB_HOST: localhost
+          DB_PORT: "5432"
+        run: python manage.py migrate
+
+      - name: Load sample data
+        working-directory: backend
+        env:
+          USE_SQLITE: "1"
+          SECRET_KEY: dummy
+          DEBUG: "1"
+          DB_NAME: dummy
+          DB_USER: dummy
+          DB_PASSWORD: dummy
+          DB_HOST: localhost
+          DB_PORT: "5432"
+        run: python manage.py create_sample_data
+
+      - name: Start backend server
+        working-directory: backend
+        env:
+          USE_SQLITE: "1"
+          SECRET_KEY: dummy
+          DEBUG: "1"
+          DB_NAME: dummy
+          DB_USER: dummy
+          DB_PASSWORD: dummy
+          DB_HOST: localhost
+          DB_PORT: "5432"
+        run: |
+          python manage.py runserver 0.0.0.0:8000 > /tmp/django.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -fsS http://localhost:8000/ && exit 0
+            sleep 2
+          done
+          echo "Backend nie wstał w oczekiwanym czasie"
+          cat /tmp/django.log
+          exit 1
+
+      - name: OWASP ZAP Baseline Scan
+        uses: zaproxy/action-baseline@v0.12.0
+        with:
+          target: "http://localhost:8000"
+          fail_action: false
+          allow_issue_writing: false
+          cmd_options: "-a"
+          artifact_name: ZAPReports
