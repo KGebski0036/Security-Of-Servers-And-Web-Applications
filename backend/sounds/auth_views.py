@@ -1,11 +1,28 @@
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
-from django.contrib.auth import authenticate
+from django.contrib.auth import authenticate, password_validation
 from django.contrib.auth.models import User
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
+from rest_framework.throttling import SimpleRateThrottle
+from django.core.exceptions import ValidationError
+from django.conf import settings
+
+
+class LoginRateThrottle(SimpleRateThrottle):
+    """
+    Limit login attempts per client IP to slow down brute-force attacks.
+    """
+
+    scope = 'login'
+
+    def get_cache_key(self, request, view):
+        return self.cache_format % {
+            'scope': self.scope,
+            'ident': self.get_ident(request),
+        }
 
 
 @api_view(['POST'])
@@ -42,6 +59,27 @@ def register(request):
             status=status.HTTP_400_BAD_REQUEST
         )
 
+    # Enforce minimum length proactively even if validators are misconfigured.
+    min_length = 12
+    for validator in settings.AUTH_PASSWORD_VALIDATORS:
+        if validator.get('NAME') == 'django.contrib.auth.password_validation.MinimumLengthValidator':
+            opts = validator.get('OPTIONS') or {}
+            min_length = opts.get('min_length', min_length)
+            break
+    if len(password) < min_length:
+        return Response(
+            {'error': [f'Password must be at least {min_length} characters long.']},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    try:
+        password_validation.validate_password(password)
+    except ValidationError as exc:
+        return Response(
+            {'error': exc.messages},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
     user = User.objects.create_user(
         username=username,
         email=email,
@@ -66,6 +104,7 @@ def register(request):
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@throttle_classes([LoginRateThrottle])
 def login(request):
     """
     Login and get JWT tokens
@@ -173,4 +212,3 @@ def me(request):
         'email': request.user.email,
         'isAdmin': request.user.is_staff,
     })
-

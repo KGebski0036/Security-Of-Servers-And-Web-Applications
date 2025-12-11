@@ -1,5 +1,8 @@
-// API Base URL - change this to your backend URL
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+// API Base URL - taken directly from environment (or fallback for local dev).
+// Only trims trailing slashes; does not add or alter the protocol.
+const rawApiBase =
+  (import.meta.env.VITE_API_BASE_URL as string | undefined) || 'http://localhost:8000/api';
+const API_BASE_URL = rawApiBase.trim().replace(/\/+$/, '');
 
 export interface Sound {
   id: number;
@@ -287,4 +290,3 @@ export const favoritesAPI = {
     });
   },
 };
-
