@@ -23,6 +23,9 @@ DEBUG = config('DEBUG', default=True, cast=bool)
 # Default to localhost for development
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,::1', cast=Csv())
 
+# Password strength (configurable per environment)
+PASSWORD_MIN_LENGTH = config('PASSWORD_MIN_LENGTH', default=10, cast=int)
+
 
 # Application definition
 
@@ -45,6 +48,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'soundvault_backend.middleware.SecurityHeadersMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -107,6 +111,9 @@ AUTH_PASSWORD_VALIDATORS = [
     },
     {
         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        'OPTIONS': {
+            'min_length': PASSWORD_MIN_LENGTH,
+        },
     },
     {
         'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
@@ -144,17 +151,43 @@ MEDIA_ROOT = BASE_DIR / 'media'
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 USE_TLS = config('USE_TLS', default=not DEBUG, cast=bool)
 
-# Force HTTPS in production
-if USE_TLS and not DEBUG:
-    SECURE_SSL_REDIRECT = False  # App Runner handles SSL termination
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
+# Cookie settings
+SESSION_COOKIE_HTTPONLY = True
+CSRF_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SECURE = USE_TLS
+CSRF_COOKIE_SECURE = USE_TLS
 
 # Base URL for building absolute URLs (for media files)
 # In production, this should be set to the App Runner HTTPS URL
 BASE_URL = config('BASE_URL', default='')
 if BASE_URL and not BASE_URL.endswith('/'):
     BASE_URL = f'{BASE_URL}/'
+
+# HTTP security headers
+X_FRAME_OPTIONS = 'DENY'
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_HSTS_SECONDS = 31536000 if USE_TLS else 0
+SECURE_HSTS_INCLUDE_SUBDOMAINS = USE_TLS
+SECURE_HSTS_PRELOAD = USE_TLS
+SECURE_SSL_REDIRECT = USE_TLS and not DEBUG  # still allow App Runner to terminate TLS
+REFERRER_POLICY = 'strict-origin-when-cross-origin'
+PERMISSIONS_POLICY = "camera=(), microphone=(), geolocation=()"
+CONTENT_SECURITY_POLICY = config(
+    'CONTENT_SECURITY_POLICY',
+    default=(
+        "default-src 'self'; "
+        "frame-ancestors 'none'; "
+        "object-src 'none'; "
+        "base-uri 'self'; "
+        "script-src 'self'; "
+        "style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data:; "
+        "connect-src 'self'; "
+        "font-src 'self'; "
+        "media-src 'self'; "
+        "form-action 'self'"
+    )
+)
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -175,6 +208,9 @@ REST_FRAMEWORK = {
         'rest_framework.filters.SearchFilter',
         'rest_framework.filters.OrderingFilter',
     ],
+    'DEFAULT_THROTTLE_RATES': {
+        'login': config('LOGIN_THROTTLE_RATE', default='5/min'),
+    },
 }
 
 # JWT Settings
@@ -199,6 +235,14 @@ CORS_ALLOWED_ORIGINS = config(
     default='http://localhost:8080,http://127.0.0.1:8080',
     cast=Csv()
 )
+
+CORS_ALLOWED_ORIGIN_REGEXES = config(
+    'CORS_ALLOWED_ORIGIN_REGEXES',
+    default='^https://[a-z0-9.-]+\\.cloudfront\\.net$',
+    cast=Csv()
+)
+if CORS_ALLOWED_ORIGIN_REGEXES == [''] or CORS_ALLOWED_ORIGIN_REGEXES is None:
+    CORS_ALLOWED_ORIGIN_REGEXES = []
 
 CORS_ALLOW_CREDENTIALS = True
 
