@@ -23,6 +23,9 @@ DEBUG = config('DEBUG', default=True, cast=bool)
 # Default to localhost for development
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,::1', cast=Csv())
 
+# Password strength (configurable per environment)
+PASSWORD_MIN_LENGTH = config('PASSWORD_MIN_LENGTH', default=10, cast=int)
+
 
 # Application definition
 
@@ -109,7 +112,7 @@ AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
         'OPTIONS': {
-            'min_length': 12,
+            'min_length': PASSWORD_MIN_LENGTH,
         },
     },
     {

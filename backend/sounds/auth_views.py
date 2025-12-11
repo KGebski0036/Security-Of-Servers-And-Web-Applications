@@ -60,7 +60,7 @@ def register(request):
         )
 
     # Enforce minimum length proactively even if validators are misconfigured.
-    min_length = 12
+    min_length = getattr(settings, 'PASSWORD_MIN_LENGTH', 12)
     for validator in settings.AUTH_PASSWORD_VALIDATORS:
         if validator.get('NAME') == 'django.contrib.auth.password_validation.MinimumLengthValidator':
             opts = validator.get('OPTIONS') or {}
