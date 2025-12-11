@@ -3,6 +3,9 @@ resource "aws_cloudwatch_dashboard" "apprunner" {
 
   dashboard_body = jsonencode({
     widgets = [
+      # ---------------------------------------------------
+      # 1. App Runner – liczba aktywnych instancji
+      # ---------------------------------------------------
       {
         type   = "metric"
         width  = 12
@@ -23,6 +26,10 @@ resource "aws_cloudwatch_dashboard" "apprunner" {
           ]
         }
       },
+
+      # ---------------------------------------------------
+      # 2. App Runner – liczba requestów
+      # ---------------------------------------------------
       {
         type   = "metric"
         width  = 12
@@ -42,7 +49,10 @@ resource "aws_cloudwatch_dashboard" "apprunner" {
             ]
           ]
         }
-      }
+      },
+
+      # ---------------------------------------------------
+      # WAF metryki usunięte – korzystaj z panelu CloudFront/WAF w konsoli
     ]
   })
 }

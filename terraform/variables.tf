@@ -41,6 +41,16 @@ variable "waf_rate_limit" {
   default     = 20000
 }
 
+variable "waf_rate_limit_action" {
+  description = "Action for rate limit rule: COUNT (observe) or BLOCK (enforce)"
+  type        = string
+  default     = "COUNT"
+  validation {
+    condition     = contains(["COUNT", "BLOCK"], upper(var.waf_rate_limit_action))
+    error_message = "waf_rate_limit_action must be COUNT or BLOCK"
+  }
+}
+
 variable "waf_ip_allow_list" {
   description = "Optional IPv4 CIDRs to explicitly allow (CloudFront scope)"
   type        = list(string)
