@@ -58,8 +58,14 @@ jobs:
           DB_HOST: localhost
           DB_PORT: "5432"
         run: |
-          python manage.py runserver 0.0.0.0:8000 &
-          sleep 5
+          python manage.py runserver 0.0.0.0:8000 > /tmp/django.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -fsS http://localhost:8000/ && exit 0
+            sleep 2
+          done
+          echo "Backend nie wstał w oczekiwanym czasie"
+          cat /tmp/django.log
+          exit 1
 
       - name: OWASP ZAP Baseline Scan
         uses: zaproxy/action-baseline@v0.12.0
@@ -68,4 +74,4 @@ jobs:
           fail_action: false
           allow_issue_writing: false
           cmd_options: "-a"
-          artifact_name: ZAP-Reports-v1
+          artifact_name: ZAPReports

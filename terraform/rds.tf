@@ -5,10 +5,10 @@ resource "aws_security_group" "rds" {
   vpc_id      = module.vpc.vpc_id
 
   ingress {
-    description = "From VPC private subnets"
-    from_port   = 5432
-    to_port     = 5432
-    protocol    = "tcp"
+    description     = "From VPC private subnets"
+    from_port       = 5432
+    to_port         = 5432
+    protocol        = "tcp"
     security_groups = [aws_security_group.apprunner_sg.id]
   }
 
@@ -45,9 +45,9 @@ module "db" {
   create_db_subnet_group = true
   db_subnet_group_name   = "${var.project_name}-subnet-group"
 
-  db_name  = var.db_name
-  username = var.db_username
-  password = random_password.db.result
+  db_name                = var.db_name
+  username               = var.db_username
+  password               = random_password.db.result
   create_random_password = false
 
   subnet_ids             = module.vpc.private_subnets

@@ -56,15 +56,15 @@ module "cloudfront" {
   # Return index.html for 403 and 404 errors to support client-side routing
   custom_error_response = [
     {
-      error_code         = 403
-      response_code      = 200
-      response_page_path = "/index.html"
+      error_code            = 403
+      response_code         = 200
+      response_page_path    = "/index.html"
       error_caching_min_ttl = 300
     },
     {
-      error_code         = 404
-      response_code      = 200
-      response_page_path = "/index.html"
+      error_code            = 404
+      response_code         = 200
+      response_page_path    = "/index.html"
       error_caching_min_ttl = 300
     }
   ]
@@ -78,6 +78,8 @@ module "cloudfront" {
     } : {
     cloudfront_default_certificate = true
   }
+
+  web_acl_id = aws_wafv2_web_acl.cloudfront.arn
 
   tags = {
     Project = var.project_name
