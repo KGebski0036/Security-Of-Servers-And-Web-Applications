@@ -34,6 +34,41 @@ variable "cloudfront_acm_arn" {
   default = ""
 }
 
+# WAF / CloudFront protection
+variable "waf_rate_limit" {
+  description = "Requests per 5 minutes per IP for rate-based rule"
+  type        = number
+  default     = 20000
+}
+
+variable "waf_rate_limit_action" {
+  description = "Action for rate limit rule: COUNT (observe) or BLOCK (enforce)"
+  type        = string
+  default     = "COUNT"
+  validation {
+    condition     = contains(["COUNT", "BLOCK"], upper(var.waf_rate_limit_action))
+    error_message = "waf_rate_limit_action must be COUNT or BLOCK"
+  }
+}
+
+variable "waf_ip_allow_list" {
+  description = "Optional IPv4 CIDRs to explicitly allow (CloudFront scope)"
+  type        = list(string)
+  default     = []
+}
+
+variable "waf_ip_block_list" {
+  description = "Optional IPv4 CIDRs to explicitly block (CloudFront scope)"
+  type        = list(string)
+  default     = []
+}
+
+variable "waf_enable_bot_control" {
+  description = "Toggle AWSManagedRulesBotControlRuleSet"
+  type        = bool
+  default     = true
+}
+
 # App Runner image tag to pull from ECR
 variable "backend_image_tag" {
   type    = string

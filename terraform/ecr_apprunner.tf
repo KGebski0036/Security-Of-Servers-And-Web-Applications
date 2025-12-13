@@ -87,8 +87,8 @@ resource "aws_apprunner_service" "backend" {
 
   instance_configuration {
     instance_role_arn = aws_iam_role.apprunner_access_role.arn
-    cpu    = "1024" # 1 vCPU (Example values, adjust if needed)
-    memory = "2048" # 2 GB (Example values, adjust if needed)
+    cpu               = "1024" # 1 vCPU (Example values, adjust if needed)
+    memory            = "2048" # 2 GB (Example values, adjust if needed)
   }
 
   source_configuration {
@@ -104,11 +104,11 @@ resource "aws_apprunner_service" "backend" {
         port = "8000"
         runtime_environment_variables = {
           # Use the variable from previous fix (db_instance_address)
-          DB_HOST        = module.db.db_instance_address
-          DB_PORT        = module.db.db_instance_port
-          DB_NAME        = var.db_name
-          DB_USER        = var.db_username
-          PGSSLMODE      = "require"
+          DB_HOST   = module.db.db_instance_address
+          DB_PORT   = module.db.db_instance_port
+          DB_NAME   = var.db_name
+          DB_USER   = var.db_username
+          PGSSLMODE = "require"
           # CORS: Add CloudFront domain to allowed origins
           # This allows the frontend hosted on CloudFront to make API requests
           CORS_ALLOWED_ORIGINS = "https://${module.cloudfront.cloudfront_distribution_domain_name}"
