@@ -74,10 +74,11 @@ jobs:
         env:
           VITE_API_BASE_URL: http://localhost:8000/api
         run: npm run build
+        
   publish_image:
     name: Build & Push Docker Image
     runs-on: ubuntu-latest
-    needs: [backend, frontend] 
+    needs: [backend, frontend]
     
     steps:
       - name: Checkout code
@@ -105,3 +106,85 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+
+  # --- WDROŻENIE (CD) I BEZPIECZEŃSTWO (L6) ---
+  deployment_staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [publish_image]
+    environment: Staging
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # L6: (Symulacja użycia klucza SSH z powodu braku uprawnień Admin)
+      # W realnym projekcie użyto by 'webfactory/ssh-agent@v0.9.0' z kluczem z Sekretów.
+      - name: SSH Key Setup Placeholder (Staging)
+        run: echo "Zasymulowano bezpieczne wczytanie klucza STAGING_SSH_PRIVATE_KEY (bo nie mam uprawnien do settings)"
+        
+      # 2. Wdrożenie na serwer testowy (Staging)
+      - name: Deploy to Staging Server
+        env:
+          # Adres docelowy TYLKO do celów demonstracyjnych, w rzeczywistości użyto by ${{ secrets.STAGING_SERVER_IP }}
+          TARGET_HOST: 127.0.0.1 
+          TARGET_USER: ubuntu # <-- WAŻNE: ZMIEŃ NA TWOJEGO UŻYTKOWNIKA (np. 'ec2-user')
+          IMAGE_TAG: ghcr.io/${{ github.repository }}/backend:${{ github.sha }}
+          
+        run: |
+          echo "Connecting to Staging Server ($TARGET_HOST) via SSH..."
+          # Realny skrypt, który połączyłby się z serwerem i wdrożył kontener
+          ssh -o StrictHostKeyChecking=no $TARGET_USER@$TARGET_HOST << 'EOF'
+            echo "--- POBIERANIE NOWEGO OBRAZU I RESTART NA STAGING ---"
+            docker pull $IMAGE_TAG 
+            docker stop staging-app || true # zatrzymaj stary kontener
+            docker rm staging-app || true   # usuń stary kontener
+            # Uruchomienie kontenera na porcie 8080 (dla DAST)
+            docker run -d --name staging-app -p 8080:8000 $IMAGE_TAG 
+            echo "Aplikacja Staging wdrożona i działa na porcie 8080!"
+          EOF
+
+
+  # --- 2. Dynamiczne skanowanie bezpieczeństwa (DAST) - Element L6 ---
+  dast_scan:
+    name: DAST Scan
+    runs-on: ubuntu-latest
+    needs: [deployment_staging] # Zacznie się po pomyślnym wdrożeniu na Staging
+    
+    # Ten krok wywołuje Twój istniejący plik dast.yml, 
+    # który musi skanować adres Staging
+    uses: ./.github/workflows/dast.yml
+
+  # --- 3. Wdrożenie Produkcyjne (Deployment) - Element L5 i L6 ---
+  deployment_production:
+    name: Deployment to Production
+    runs-on: ubuntu-latest
+    needs: [dast_scan] # Uruchamia się TYLKO, gdy skan DAST przeszedł pomyślnie!
+    environment: Production # Oznaczenie jako wdrożenie produkcyjne
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      # L6: (Symulacja użycia klucza SSH z powodu braku uprawnień Admin)
+      # W realnym projekcie użyto by 'webfactory/ssh-agent@v0.9.0' z kluczem z Sekretów.
+      - name: SSH Key Setup Placeholder (Production)
+        run: echo "Zasymulowano bezpieczne wczytanie klucza SSH_PRIVATE_KEY."
+          
+      - name: Deploy to Production Server via SSH
+        env:
+          # Adres docelowy TYLKO do celów demonstracyjnych, w rzeczywistości użyto by ${{ secrets.PROD_SERVER_IP }}
+          TARGET_HOST: 127.0.0.1 
+          TARGET_USER: ubuntu # <-- WAŻNE: ZMIEŃ NA TWOJEGO UŻYTKOWNIKA (np. 'ec2-user')
+          IMAGE_TAG: ghcr.io/${{ github.repository }}/backend:latest # Wdrażamy najnowszy obraz
+          
+        run: |
+          echo "Connecting to Production Server ($TARGET_HOST)..."
+          # Wdrożenie nowego obrazu na serwer produkcyjny
+          ssh -o StrictHostKeyChecking=no $TARGET_USER@$TARGET_HOST << 'EOF'
+            echo "--- POBIERANIE NOWEGO OBRAZU I RESTART ---"
+            docker pull $IMAGE_TAG 
+            docker stop my-app || true 
+            docker rm my-app || true   
+            docker run -d --name my-app -p 80:8000 $IMAGE_TAG
+            echo "Aplikacja produkcyjna wdrożona i działa!"
+          EOF
