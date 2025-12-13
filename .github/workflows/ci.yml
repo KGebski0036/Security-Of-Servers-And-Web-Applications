@@ -146,12 +146,8 @@ jobs:
 
   # --- 2. Dynamiczne skanowanie bezpieczeństwa (DAST) - Element L6 ---
   dast_scan:
-    name: DAST Scan
-    runs-on: ubuntu-latest
-    needs: [deployment_staging] # Zacznie się po pomyślnym wdrożeniu na Staging
-    
-    # Ten krok wywołuje Twój istniejący plik dast.yml, 
-    # który musi skanować adres Staging
+    # W GitHub Actions, gdy używamy "uses", nie możemy podawać runs-on, steps, ani name na tym poziomie!
+    needs: [deployment_staging]
     uses: ./.github/workflows/dast.yml
 
   # --- 3. Wdrożenie Produkcyjne (Deployment) - Element L5 i L6 ---
