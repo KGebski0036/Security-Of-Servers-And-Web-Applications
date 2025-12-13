@@ -10,7 +10,14 @@ ENV PYTHONUNBUFFERED=1
 RUN apt-get update && apt-get install -y \
     postgresql-client \
     netcat-openbsd \
+RUN apt-get update && apt-get install -y \
+    postgresql-client \
+    netcat-openbsd \
+    awscli \
+    jq \
+    gosu \
     && rm -rf /var/lib/apt/lists/*
+
 
 # Install Python dependencies
 COPY requirements.txt .
@@ -18,6 +25,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy project
 COPY . .
+
+# Hardening (L8)
+#nieuprzywil uztkownik
+RUN adduser --system --group --shell /bin/false nonrootuser
+RUN chown -R nonrootuser:nonrootuser /app
+# USER nonrootuser
 
 # Copy and set permissions for entrypoint
 COPY entrypoint.sh /entrypoint.sh

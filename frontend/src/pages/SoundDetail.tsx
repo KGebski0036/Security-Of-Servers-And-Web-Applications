@@ -9,6 +9,7 @@ import { soundsAPI, commentsAPI, favoritesAPI, Comment } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
+import DOMPurify from "dompurify";
 
 const SoundDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -116,7 +117,9 @@ const SoundDetail = () => {
       return;
     }
     if (!commentText.trim()) return;
-    commentMutation.mutate(commentText.trim());
+    const cleanText = DOMPurify.sanitize(commentText.trim(), { USE_PROFILES: { html: false } });
+    commentMutation.mutate(cleanText);
+
   };
 
   // Handle audio playback
@@ -303,7 +306,13 @@ const SoundDetail = () => {
                       {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
                     </span>
                   </div>
-                  <p className="text-muted-foreground">{comment.content}</p>
+                  <p 
+                    className="text-muted-foreground"
+                    dangerouslySetInnerHTML={{
+                       __html: DOMPurify.sanitize(comment.content),
+                   }}
+                 ></p>
+
                 </div>
               ))
             )}
