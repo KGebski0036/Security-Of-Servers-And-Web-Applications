@@ -1,7 +1,9 @@
 from rest_framework import serializers
+import bleach
 from django.contrib.auth.models import User
 from django.conf import settings
 from .models import Sound, Tag, Comment, Favorite
+
 
 
 class TagSerializer(serializers.ModelSerializer):
