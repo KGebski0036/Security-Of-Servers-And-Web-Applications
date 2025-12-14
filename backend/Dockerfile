@@ -10,9 +10,6 @@ ENV PYTHONUNBUFFERED=1
 RUN apt-get update && apt-get install -y \
     postgresql-client \
     netcat-openbsd \
-RUN apt-get update && apt-get install -y \
-    postgresql-client \
-    netcat-openbsd \
     awscli \
     jq \
     gosu \
