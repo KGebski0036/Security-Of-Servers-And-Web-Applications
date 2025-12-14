@@ -1,8 +1,7 @@
 name: DAST Scanner Workflow
 
 on:
-  workflow_call: # POPRAWKA: Umożliwia wywołanie przez ci.yml (w przeciwieństwie do workflow_dispatch)
-    # Definicja zmiennych/sekretów, które przyjmujemy od wywołującego workflowa (ci.yml)
+  workflow_call:
     inputs:
       staging_url:
         required: true
@@ -17,19 +16,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      # ZAP skanuje ZDALNY serwer Staging, nie uruchamia lokalnej aplikacji!
       - name: OWASP ZAP Baseline Scan
         uses: zaproxy/action-baseline@v0.12.0
         with:
-          # POPRAWKA: Używamy adresu przekazanego z głównego workflowa
           target: ${{ inputs.staging_url }}
-          # Te opcje pozwalają na niekrytyczne błędy w DAST
           fail_action: false
           allow_issue_writing: false
           cmd_options: "-a"
           artifact_name: ZAPReports
           
-      # Dodatkowy krok do weryfikacji wyniku (opcjonalny, ale przydatny)
       - name: DAST Result Check
         run: |
-          echo "Skan DAST zakończony pomyślnie. Aplikacja przechodzi do wdrożenia Produkcyjnego."
+          echo "Skan DAST zakończony pomyślnie."
