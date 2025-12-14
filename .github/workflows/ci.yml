@@ -150,8 +150,7 @@ jobs:
     uses: ./.github/workflows/dast.yml
     with:
       staging_url: http://127.0.0.1:8080
-
-    deployment_production:
+  deployment_production:
     name: Deployment to Production
     runs-on: ubuntu-latest
     needs: [dast_scan] # Uruchamia się TYLKO, gdy skan DAST przeszedł pomyślnie
