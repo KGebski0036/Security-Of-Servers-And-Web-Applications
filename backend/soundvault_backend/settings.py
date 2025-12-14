@@ -208,7 +208,12 @@ REST_FRAMEWORK = {
         'rest_framework.filters.SearchFilter',
         'rest_framework.filters.OrderingFilter',
     ],
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle'
     'DEFAULT_THROTTLE_RATES': {
+        'anon': '10/hour',
+        'user': '1000/hour',
         'login': config('LOGIN_THROTTLE_RATE', default='5/min'),
     },
 }
@@ -304,26 +309,28 @@ SECURE_BROWSER_XSS_FILTER = True
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 SESSION_COOKIE_AGE=60*60*24
+# API Rate Limiting CACHES (Conditional for CI/Testing)
+REDIS_HOST = config('REDIS_HOST', default='redis')
+REDIS_PORT = config('REDIS_PORT', default='6379')
 
-
-# API Rate Limiting
-CACHES = {
-    "default": {
-        "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": "redis://redis:6379/1",
-        "OPTIONS": {
-            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+# Jeśli uruchamiamy testy w GitHub Actions lub DEBUG jest włączony, użyjemy pamięci lokalnej (LocMemCache)
+if DEBUG or os.environ.get('GITHUB_ACTIONS') == 'true':
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'unique-test-cache',
         }
     }
-}
-REST_FRAMEWORK = {
-    'DEFAULT_THROTTLE_CLASSES': [
-        'rest_framework.throttling.AnonRateThrottle',
-        'rest_framework.throttling.UserRateThrottle'
-    ],
-    'DEFAULT_THROTTLE_RATES': {
-        'anon': '100/hour', 
-        'user': '1000/hour'
+else:
+    # W produkcji i środowiskach Docker/App Runner używamy Redisa
+    CACHES = {
+        "default": {
+            "BACKEND": "django_redis.cache.RedisCache",
+            "LOCATION": f"redis://{REDIS_HOST}:{REDIS_PORT}/1",
+            "OPTIONS": {
+                "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            }
+        }
     }
-}
+
 
