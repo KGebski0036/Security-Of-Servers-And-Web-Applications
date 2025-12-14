@@ -41,6 +41,7 @@ jobs:
           DB_PASSWORD: dummy
           DB_HOST: localhost
           DB_PORT: "5432"
+          GITHUB_ACTIONS: "true"
         run: python manage.py test
 
   frontend:
