@@ -144,22 +144,18 @@ jobs:
           EOF
 
 
- # --- 2. Dynamiczne skanowanie bezpieczeństwa (DAST) - Element L6 ---
+#DAST(L6)
   dast_scan:
     needs: [deployment_staging] 
     uses: ./.github/workflows/dast.yml
     with:
-      # Przekazujemy adres wdrożonego serwera Staging do DAST
-      # W naszym przypadku, symulujemy adres 127.0.0.1:8080 
-      # (w rzeczywistości użyłabyś zmiennej z IP serwera)
       staging_url: http://127.0.0.1:8080
 
-  # --- 3. Wdrożenie Produkcyjne (Deployment) - Element L5 i L6 ---
-  deployment_production:
+    deployment_production:
     name: Deployment to Production
     runs-on: ubuntu-latest
-    needs: [dast_scan] # Uruchamia się TYLKO, gdy skan DAST przeszedł pomyślnie!
-    environment: Production # Oznaczenie jako wdrożenie produkcyjne
+    needs: [dast_scan] # Uruchamia się TYLKO, gdy skan DAST przeszedł pomyślnie
+    environment: Production 
 
     steps:
       - name: Checkout code
