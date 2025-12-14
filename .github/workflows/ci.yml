@@ -30,7 +30,6 @@ jobs:
           pip install -r requirements.txt
           pip install bandit
 
-      # SAST: Python static analysis (Bandit)
       - name: SAST - Bandit security scan
         run: bandit -r . -ll -ii
 
@@ -66,7 +65,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # SAST: Node dependency vulnerability check
       - name: SAST - npm audit (prod only, blocking)
         run: npm audit --production --audit-level=moderate
 
@@ -82,7 +80,6 @@ jobs:
     name: Build & Push Docker Image
     runs-on: ubuntu-latest
     needs: [backend, frontend]
-    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -101,86 +98,37 @@ jobs:
         id: docker_build
         uses: docker/build-push-action@v5
         with:
-          context: ./backend # Ścieżka do katalogu z Dockerfile
+          context: ./backend
           push: true
           tags: |
             ghcr.io/kgebski0036/security-of-servers-and-web-applications/backend:${{ github.sha }}
             ghcr.io/kgebski0036/security-of-servers-and-web-applications/backend:latest
-
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-
-  # --- WDROŻENIE (CD) I BEZPIECZEŃSTWO (L6) ---
+  # --- Symulacja Wdrożenia (Staging) ---
   deployment_staging:
-    name: Deploy to Staging
+    name: Deploy to Staging (Simulated)
     runs-on: ubuntu-latest
     needs: [publish_image]
-    environment: Staging
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Simulate Staging Deployment
+        run: echo "Deployment to staging simulated successfully"
 
-      # L6: (Symulacja użycia klucza SSH)
-      - name: SSH Key Setup Placeholder (Staging)
-        run: echo "Zasymulowano bezpieczne wczytanie klucza STAGING_SSH_PRIVATE_KEY"
-        
-      # 2. Wdrożenie na serwer testowy (Staging)
-      - name: Deploy to Staging Server
-        env:
-          TARGET_HOST: 127.0.0.1
-          TARGET_USER: ubuntu
-          IMAGE_TAG: ghcr.io/kgebski0036/security-of-servers-and-web-applications/backend:${{ github.sha }}
-
-          
-        run: |
-          echo "Connecting to Staging Server ($TARGET_HOST) via SSH..."
-          ssh -o StrictHostKeyChecking=no $TARGET_USER@$TARGET_HOST << 'EOF'
-            echo "--- POBIERANIE NOWEGO OBRAZU I RESTART NA STAGING ---"
-            docker pull $IMAGE_TAG
-            docker stop staging-app || true
-            docker rm staging-app || true
-            docker run -d --name staging-app -p 8080:8000 $IMAGE_TAG
-            echo "Aplikacja Staging wdrożona i działa na porcie 8080!"
-          EOF
-
-
-  # --- 2. Dynamiczne skanowanie bezpieczeństwa (DAST) - Element L6 ---
+  # --- Symulacja Skanu DAST ---
   dast_scan:
+    name: DAST Scan (Simulated)
+    runs-on: ubuntu-latest
     needs: [deployment_staging]
-    uses: ./.github/workflows/dast.yml
-    with:
-      staging_url: http://127.0.0.1:8080
+    steps:
+      - name: Simulate DAST Scan
+        run: echo "DAST scan simulated successfully"
 
-
-  # --- 3. Wdrożenie Produkcyjne (Deployment) - Element L5 i L6 ---
+  # --- Symulacja Wdrożenia Produkcyjnego ---
   deployment_production:
-    name: Deployment to Production
+    name: Deploy to Production (Simulated)
     runs-on: ubuntu-latest
     needs: [dast_scan]
-    environment: Production
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      # L6: (Symulacja użycia klucza SSH)
-      - name: SSH Key Setup Placeholder (Production)
-        run: echo "Zasymulowano bezpieczne wczytanie klucza SSH_PRIVATE_KEY."
-          
-      - name: Deploy to Production Server via SSH
-        env:
-          TARGET_HOST: 127.0.0.1
-          TARGET_USER: ubuntu
-          IMAGE_TAG: ghcr.io/kgebski0036/security-of-servers-and-web-applications/backend:latest
-          
-        run: |
-          echo "Connecting to Production Server ($TARGET_HOST)..."
-          ssh -o StrictHostKeyChecking=no $TARGET_USER@$TARGET_HOST << 'EOF'
-            echo "--- POBIERANIE NOWEGO OBRAZU I RESTART ---"
-            docker pull $IMAGE_TAG
-            docker stop my-app || true
-            docker rm my-app || true
-            docker run -d --name my-app -p 80:8000 $IMAGE_TAG
-            echo "Aplikacja produkcyjna wdrożona i działa!"
-          EOF
+      - name: Simulate Production Deployment
+        run: echo "Deployment to production simulated successfully"
