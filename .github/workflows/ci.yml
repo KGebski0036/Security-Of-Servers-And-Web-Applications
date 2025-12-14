@@ -5,6 +5,9 @@ on:
     branches: [main, branch2, feature/ci-cd(5)]
   pull_request:
     branches: [main, branch2, feature/ci-cd(5)]
+permissions:
+  contents: read
+  packages: write
 
 jobs:
   backend:
