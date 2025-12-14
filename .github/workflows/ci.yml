@@ -2,9 +2,9 @@ name: CI
 #Final attempt
 on:
   push:
-    branches: [main, branch2]
+    branches: [main, branch2, feature/ci-cd(5)]
   pull_request:
-    branches: [main, branch2]
+    branches: [main, branch2, feature/ci-cd(5)]
 
 jobs:
   backend:
