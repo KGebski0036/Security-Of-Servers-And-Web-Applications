@@ -101,8 +101,8 @@ jobs:
           context: ./backend # Ścieżka do katalogu z Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner | lower }}/security-of-servers-and-web-applications/backend:${{ github.sha }}
-            ghcr.io/${{ github.repository_owner | lower }}/security-of-servers-and-web-applications/backend:latest
+            ghcr.io/${{ github.repository_owner }}/security-of-servers-and-web-applications/backend:${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/security-of-servers-and-web-applications/backend:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -126,7 +126,7 @@ jobs:
         env:
           TARGET_HOST: 127.0.0.1
           TARGET_USER: ubuntu
-          IMAGE_TAG: ghcr.io/${{ github.repository | lower }}/backend:${{ github.sha }}
+          IMAGE_TAG: ghcr.io/${{ github.repository_owner }}/security-of-servers-and-web-applications/backend:${{ github.sha }}
           
         run: |
           echo "Connecting to Staging Server ($TARGET_HOST) via SSH..."
@@ -167,7 +167,7 @@ jobs:
         env:
           TARGET_HOST: 127.0.0.1
           TARGET_USER: ubuntu
-          IMAGE_TAG: ghcr.io/${{ github.repository | lower }}/backend:latest
+          IMAGE_TAG: ghcr.io/${{ github.repository_owner }}/security-of-servers-and-web-applications/backend:latest
           
         run: |
           echo "Connecting to Production Server ($TARGET_HOST)..."
