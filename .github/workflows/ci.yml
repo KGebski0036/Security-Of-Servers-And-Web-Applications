@@ -1,100 +1,100 @@
 name: CI
 #Final attempt
 on:
-  push:
-    branches: [main, branch2, feature/ci-cd(5)]
-  pull_request:
-    branches: [main, branch2, feature/ci-cd(5)]
+  push:
+    branches: [main, branch2, feature/ci-cd(5)]
+  pull_request:
+    branches: [main, branch2, feature/ci-cd(5)]
 permissions:
-  contents: read
-  packages: write
+  contents: read
+  packages: write
 
 jobs:
-  backend:
-    name: Backend tests
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: backend
-    steps:
-      - uses: actions/checkout@v4
+  backend:
+    name: Backend tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: "pip"
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
 
-      - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
-          pip install bandit
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install bandit
 
-      - name: SAST - Bandit security scan
-        run: bandit -r . -ll -ii
+      - name: SAST - Bandit security scan
+        run: bandit -r . -ll -ii
 
-      - name: Run backend tests (SQLite)
-        env:
-          USE_SQLITE: "1"
-          SECRET_KEY: dummy
-          DEBUG: "1"
-          DB_NAME: dummy
-          DB_USER: dummy
-          DB_PASSWORD: dummy
-          DB_HOST: localhost
-          DB_PORT: "5432"
-          GITHUB_ACTIONS: "true"
-        run: python manage.py test
+      - name: Run backend tests (SQLite)
+        env:
+          USE_SQLITE: "1"
+          SECRET_KEY: dummy
+          DEBUG: "1"
+          DB_NAME: dummy
+          DB_USER: dummy
+          DB_PASSWORD: dummy
+          DB_HOST: localhost
+          DB_PORT: "5432"
+          GITHUB_ACTIONS: "true"
+        run: python manage.py test
 
-  iac_security_scan:
-    name: IaC Security Scan (Checkov)
-    runs-on: ubuntu-latest
-    needs: [backend]
-    steps:
-    - uses: actions/checkout@v4
+  iac_security_scan:
+    name: IaC Security Scan (Checkov)
+    runs-on: ubuntu-latest
+    needs: [backend]
+    steps:
+    - uses: actions/checkout@v4
 
-    - name: Run Checkov IaC Scanner
-      uses: bridgecrewio/checkov-action@v12
-      with:
-        directory: terraform/ 
-        framework: terraform
-        soft_fail: false 
-        check: CKV_AWS_1,CKV_AWS_10,CKV_AWS_21 
+    - name: Run Checkov IaC Scanner
+      uses: bridgecrewio/checkov-action@v12
+      with:
+        directory: terraform/
+        framework: terraform
+        soft_fail: false
+        check: CKV_AWS_1,CKV_AWS_10,CKV_AWS_21
 
-  frontend:
-    name: Frontend build
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: frontend
-    steps:
-      - uses: actions/checkout@v4
+  frontend:
+    name: Frontend build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
 
-      - name: Set up Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "npm"
-          cache-dependency-path: frontend/package-lock.json
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Install dependencies
+        run: npm ci
 
-      - name: SAST - npm audit (prod only, blocking)
-        run: npm audit --production --audit-level=moderate
+      - name: SAST - npm audit (prod only, blocking)
+        run: npm audit --production --audit-level=moderate
 
-      - name: Lint
-        run: npm run lint
+      - name: Lint
+        run: npm run lint
 
-      - name: Build
-        env:
-          VITE_API_BASE_URL: http://localhost:8000/api
-        run: npm run build
-        
-  publish_image:
+      - name: Build
+        env:
+          VITE_API_BASE_URL: http://localhost:8000/api
+        run: npm run build
+
+  publish_image:
     name: Build & Push Docker Image
     runs-on: ubuntu-latest
-    needs: [backend, frontend, iac_security_scan] 
+    needs: [backend, frontend, iac_security_scan]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -109,58 +109,62 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # 1. BUDOWANIE (dla skanowania, używając 'load: true')
       - name: Build Docker image for Trivy Scan
-        id: docker_build
+        id: docker_build_trivy_scan
         uses: docker/build-push-action@v5
         with:
           context: ./backend
-          tags: ghcr.io/${{ github.repository }}/backend:scan-test # Używamy spójnego taga do skanowania
-          load: true # Załaduj obraz do lokalnego Dockera, aby Trivy mógł go skanować
+          tags: ghcr.io/${{ github.repository }}/backend:scan-test
+          load: true # Załaduj obraz lokalnie dla Trivy
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      # 2. SKANOWANIE (BRAMA BEZPIECZEŃSTWA Trivy)
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@0.24.0
         with:
-          image-ref: 'ghcr.io/${{ github.repository }}/backend:scan-test' 
+          image-ref: 'ghcr.io/${{ github.repository }}/backend:scan-test'
           format: 'table'
-          exit-code: '1' 
+          exit-code: '1' # Zablokowanie CI/CD, jeśli HIGH/CRITICAL
           severity: 'CRITICAL,HIGH'
           ignore-unfixed: true
 
+      # 3. PUSH (Tylko jeśli Trivy przeszedł pomyślnie)
       - name: Push Docker image to GHCR
         uses: docker/build-push-action@v5
         with:
           context: ./backend
           push: true
           tags: |
-            ghcr.io/kgebski0036/security-of-servers-and-web-applications/backend:${{ github.sha }} 
-            ghcr.io/kgebski0036/security-of-servers-and-web-applications/backend:latest 
-          cache-from: type=gha  # Ta linia i poniższa MUSZĄ mieć to samo wcięcie co `tags: |`
+            ghcr.io/kgebski0036/security-of-servers-and-web-applications/backend:${{ github.sha }}
+            ghcr.io/kgebski0036/security-of-servers-and-web-applications/backend:latest
+          cache-from: type=gha
           cache-to: type=gha,mode=max
- #Symulacja Wdrożenia (Staging)
-  deployment_staging:
-    name: Deploy to Staging (Simulated)
-    runs-on: ubuntu-latest
-    needs: [publish_image]
-    steps:
-      - name: Simulate Staging Deployment
-        run: echo "Deployment to staging simulated successfully"
 
-  # --- Symulacja Skanu DAST ---
-  dast_scan:
-    name: DAST Scan (Simulated)
-    runs-on: ubuntu-latest
-    needs: [deployment_staging]
-    steps:
-      - name: Simulate DAST Scan
-        run: echo "DAST scan simulated successfully"
+  # --- Symulacja Wdrożenia (Staging) ---
+  deployment_staging:
+    name: Deploy to Staging (Simulated)
+    runs-on: ubuntu-latest
+    needs: [publish_image]
+    steps:
+      - name: Simulate Staging Deployment
+        run: echo "Deployment to staging simulated successfully"
 
-  # --- Symulacja Wdrożenia Produkcyjnego ---
-  deployment_production:
-    name: Deploy to Production (Simulated)
-    runs-on: ubuntu-latest
-    needs: [dast_scan]
-    steps:
-      - name: Simulate Production Deployment
-        run: echo "Deployment to production simulated successfully"
+  # --- Symulacja Skanu DAST ---
+  dast_scan:
+    name: DAST Scan (Simulated)
+    runs-on: ubuntu-latest
+    needs: [deployment_staging]
+    steps:
+      - name: Simulate DAST Scan
+        run: echo "DAST scan simulated successfully"
+
+  # --- Symulacja Wdrożenia Produkcyjnego ---
+  deployment_production:
+    name: Deploy to Production (Simulated)
+    runs-on: ubuntu-latest
+    needs: [dast_scan]
+    steps:
+      - name: Simulate Production Deployment
+        run: echo "Deployment to production simulated successfully"
