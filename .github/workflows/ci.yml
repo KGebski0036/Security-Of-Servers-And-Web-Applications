@@ -26,10 +26,16 @@ jobs:
         run: |
           pip install -r requirements.txt
           pip install bandit
+          pip install safety
 
       # SAST: Python static analysis (Bandit)
       - name: SAST - Bandit security scan
         run: bandit -r . -ll -ii
+
+      # SCA: Python dependency check (safety)
+      - name: SCA - Safety dependency check
+        run: safety check
+        continue-on-error: true
 
       - name: Run backend tests (SQLite)
         env:
