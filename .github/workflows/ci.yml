@@ -109,13 +109,13 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: ./backend
-          tags: ghcr.io/${{ github.repository }}/backend:scan-test
+          tags: ghcr.io/kgebski0036/security-of-servers-and-web-applications/backend:scan-test
           load: true
 
       - name: Trivy scan
         uses: aquasecurity/trivy-action@0.24.0
         with:
-          image-ref: ghcr.io/${{ github.repository }}/backend:scan-test
+          image-ref: ghcr.io/kgebski0036/security-of-servers-and-web-applications/backend:scan-test
           exit-code: "1"
           severity: CRITICAL,HIGH
 
