@@ -7,8 +7,9 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 RUN apt-get update && apt-get install -y \
-    postgresql-client \
-    && rm -rf /var/lib/apt/lists/*
+    postgresql-client 
+
+RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
 
 
 
@@ -24,8 +25,9 @@ RUN apt-get update && apt-get install -y \
     netcat-openbsd \
     awscli \
     jq \
-    gosu \
-    && rm -rf /var/lib/apt/lists/*
+    gosu 
+
+RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
