@@ -122,9 +122,9 @@ jobs:
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@0.24.0
         with:
-          image-ref: 'ghcr.io/${{ github.repository }}/backend:scan-test' # Używamy taga z kroku budowania
+          image-ref: 'ghcr.io/${{ github.repository }}/backend:scan-test' 
           format: 'table'
-          exit-code: '1' # Jeśli znajdzie luki, zawiesza się TUTAJ
+          exit-code: '1' 
           severity: 'CRITICAL,HIGH'
           ignore-unfixed: true
 
@@ -134,9 +134,9 @@ jobs:
           context: ./backend
           push: true
           tags: |
-            ghcr.io/kgebski0036/security-of-servers-and-web-applications/backend:${{ github.sha }}
-            ghcr.io/kgebski0036/security-of-servers-and-web-applications/backend:latest
-          cache-from: type=gha
+            ghcr.io/kgebski0036/security-of-servers-and-web-applications/backend:${{ github.sha }} 
+            ghcr.io/kgebski0036/security-of-servers-and-web-applications/backend:latest 
+          cache-from: type=gha  # Ta linia i poniższa MUSZĄ mieć to samo wcięcie co `tags: |`
           cache-to: type=gha,mode=max
   #Symulacja Wdrożenia (Staging)
   deployment_staging:
