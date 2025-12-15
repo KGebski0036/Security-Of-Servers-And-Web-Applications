@@ -42,7 +42,6 @@ RUN adduser --system --group --shell /bin/false nonrootuser
 RUN chown -R nonrootuser:nonrootuser /app
 USER nonrootuser
 
-
 EXPOSE 8000
 
 ENTRYPOINT ["/entrypoint.sh"]
