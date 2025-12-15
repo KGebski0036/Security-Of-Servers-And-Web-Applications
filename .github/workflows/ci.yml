@@ -46,6 +46,21 @@ jobs:
           GITHUB_ACTIONS: "true"
         run: python manage.py test
 
+  iac_security_scan:
+    name: IaC Security Scan (Checkov)
+    runs-on: ubuntu-latest
+    needs: [backend]
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Run Checkov IaC Scanner
+      uses: bridgecrewio/checkov-action@v12
+      with:
+        directory: terraform/ 
+        framework: terraform
+        soft_fail: false 
+        check: CKV_AWS_1,CKV_AWS_10,CKV_AWS_21 
+
   frontend:
     name: Frontend build
     runs-on: ubuntu-latest
@@ -77,36 +92,53 @@ jobs:
         run: npm run build
         
   publish_image:
-    name: Build & Push Docker Image
-    runs-on: ubuntu-latest
-    needs: [backend, frontend]
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+    name: Build & Push Docker Image
+    runs-on: ubuntu-latest
+    needs: [backend, frontend, iac_security_scan] 
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-      - name: Login to GitHub Container Registry (GHCR)
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Login to GitHub Container Registry (GHCR)
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push Docker image
-        id: docker_build
-        uses: docker/build-push-action@v5
-        with:
-          context: ./backend
-          push: true
-          tags: |
-            ghcr.io/kgebski0036/security-of-servers-and-web-applications/backend:${{ github.sha }}
-            ghcr.io/kgebski0036/security-of-servers-and-web-applications/backend:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+      - name: Build Docker image for Trivy Scan
+        id: docker_build
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          tags: ghcr.io/${{ github.repository }}/backend:scan-test # Używamy spójnego taga do skanowania
+          load: true # Załaduj obraz do lokalnego Dockera, aby Trivy mógł go skanować
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-  # --- Symulacja Wdrożenia (Staging) ---
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: 'ghcr.io/${{ github.repository }}/backend:scan-test' # Używamy taga z kroku budowania
+          format: 'table'
+          exit-code: '1' # Jeśli znajdzie luki, zawiesza się TUTAJ
+          severity: 'CRITICAL,HIGH'
+          ignore-unfixed: true
+
+      - name: Push Docker image to GHCR
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: true
+          tags: |
+            ghcr.io/kgebski0036/security-of-servers-and-web-applications/backend:${{ github.sha }}
+            ghcr.io/kgebski0036/security-of-servers-and-web-applications/backend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+  #Symulacja Wdrożenia (Staging)
   deployment_staging:
     name: Deploy to Staging (Simulated)
     runs-on: ubuntu-latest
