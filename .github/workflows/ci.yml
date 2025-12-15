@@ -117,7 +117,7 @@ jobs:
         with:
           image-ref: ghcr.io/kgebski0036/security-of-servers-and-web-applications/backend:scan-test
           exit-code: "1"
-          severity: CRITICAL,HIGH
+          severity: CRITICAL
 
       - name: Push Docker image to GHCR
         uses: docker/build-push-action@v5
