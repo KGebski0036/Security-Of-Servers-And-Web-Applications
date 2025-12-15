@@ -138,7 +138,7 @@ jobs:
             ghcr.io/kgebski0036/security-of-servers-and-web-applications/backend:latest 
           cache-from: type=gha  # Ta linia i poniższa MUSZĄ mieć to samo wcięcie co `tags: |`
           cache-to: type=gha,mode=max
-  #Symulacja Wdrożenia (Staging)
+ #Symulacja Wdrożenia (Staging)
   deployment_staging:
     name: Deploy to Staging (Simulated)
     runs-on: ubuntu-latest
