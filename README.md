@@ -61,6 +61,9 @@ Security-Of-Servers-And-Web-Applications/
 ```bash
 cp backend/env.example backend/.env
 # Edit backend/.env with your settings
+# Install security hooks (prevents secret leakage)
+pip install pre-commit
+pre-commit install
 docker-compose up
 docker-compose exec backend python manage.py create_sample_data
 # Edit backend/sounds/management/commands/create_sample_data.py to change seed data
@@ -276,6 +279,7 @@ The project uses GitHub Actions for continuous verification and Terraform for co
 - **DAST:** OWASP ZAP Baseline is available on demand to probe the running API without hitting cloud resources.
 - **Secrets handling:** CI uses dummy values; production secrets stay in AWS Secrets Manager and are only fetched by App Runner at runtime.
 - **Supply chain:** Docker images are built on trusted developer machines and pushed directly to the ECR repository created by Terraform, minimizing intermediary hops.
+- **Pre-commit Secret Scanning:** Local `pre-commit` hooks using **GitLeaks** block developers from accidentally committing passwords, API keys, or sensitive tokens to the repository.
 
 ## 5. Security Deep Dive: Code, Configuration, and Hardening (L7/L8)
 
