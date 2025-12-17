@@ -5,17 +5,32 @@ resource "aws_ecr_repository" "backend" {
   tags                 = { Project = var.project_name }
 }
 
-# 1. Security Group for App Runner (Allows it to talk to things inside VPC)
+# 1. Security Group for App Runner (Backend)
 resource "aws_security_group" "apprunner_sg" {
   name        = "${var.project_name}-apprunner-sg"
   description = "Security group for App Runner VPC Connector"
   vpc_id      = module.vpc.vpc_id
 
+  # UTWARDZONE REGUŁY EGRESS (Ruch Wychodzący - Krok 6)
+  # Zgodne z zasadą najmniejszych przywilejów (L8), wymagane przez Checkov.
+  
+  # Zezwolenie tylko na ruch HTTPS do Internetu
   egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
+    description = "Allow outbound HTTPS (for updates/external APIs)"
+  }
+
+  # Zezwolenie tylko na ruch do bazy danych (PostgreSQL)
+  egress {
+    from_port       = 5432
+    to_port         = 5432
+    protocol        = "tcp"
+    # Ruch do Security Group bazy danych (aws_security_group.rds)
+    security_groups = [aws_security_group.rds.id] 
+    description     = "Allow outbound PostgreSQL to RDS"
   }
 
   tags = { Name = "${var.project_name}-apprunner-sg" }
@@ -104,21 +119,17 @@ resource "aws_apprunner_service" "backend" {
         port = "8000"
         runtime_environment_variables = {
           # Use the variable from previous fix (db_instance_address)
-          DB_HOST   = module.db.db_instance_address
-          DB_PORT   = module.db.db_instance_port
-          DB_NAME   = var.db_name
-          DB_USER   = var.db_username
-          PGSSLMODE = "require"
+          DB_HOST                 = module.db.db_instance_address
+          DB_PORT                 = module.db.db_instance_port
+          DB_NAME                 = var.db_name
+          DB_USER                 = var.db_username
+          PGSSLMODE               = "require"
           # CORS: Add CloudFront domain to allowed origins
-          # This allows the frontend hosted on CloudFront to make API requests
-          CORS_ALLOWED_ORIGINS = "https://${module.cloudfront.cloudfront_distribution_domain_name}"
+          CORS_ALLOWED_ORIGINS    = "https://${module.cloudfront.cloudfront_distribution_domain_name}"
           # ALLOWED_HOSTS: Allow all hosts (security handled by CORS)
-          # App Runner service URL will be automatically included
-          ALLOWED_HOSTS = "*"
+          ALLOWED_HOSTS           = "*"
           # BASE_URL: Used for generating absolute URLs for media files
-          # App Runner service URL with HTTPS (will be set after service creation)
-          # Note: This is a self-reference that will be updated after the service is created
-          USE_TLS = "True"
+          USE_TLS                 = "True"
           # Service name exposed by the /api/whoami endpoint to show load balancing
           APP_RUNNER_SERVICE_NAME = "${var.project_name}-backend"
         }

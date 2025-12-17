@@ -1,7 +1,9 @@
 from rest_framework import serializers
+import bleach
 from django.contrib.auth.models import User
 from django.conf import settings
 from .models import Sound, Tag, Comment, Favorite
+
 
 
 class TagSerializer(serializers.ModelSerializer):
@@ -160,6 +162,9 @@ class CommentSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data['user'] = self.context['request'].user
         return super().create(validated_data)
+    def validate_content(self, value):
+        clean_value = bleach.clean(value, strip=True)
+        return clean_value
 
 
 class FavoriteSerializer(serializers.ModelSerializer):
