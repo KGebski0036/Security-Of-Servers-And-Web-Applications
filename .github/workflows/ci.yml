@@ -148,7 +148,7 @@ jobs:
     needs: [deployment_staging]
     uses: ./.github/workflows/dast.yml
     with:
-      target_url: http://localhost:8000/
+      target_url: http://localhost:8000/api/
       healthcheck_url: http://localhost:8000/api/whoami/
       start_local_backend: true
 

@@ -7,7 +7,7 @@ on:
       target_url:
         required: false
         type: string
-        default: 'http://localhost:8000/'
+        default: 'http://localhost:8000/api/'
         description: 'URL aplikacji do skanowania DAST (lokalny lub staging).'
       healthcheck_url:
         required: false
@@ -81,20 +81,39 @@ jobs:
           fi
           exit 1
 
-      # ZAP skanuje target_url (lokalny lub staging).
       - name: OWASP ZAP Baseline Scan
-        uses: zaproxy/action-baseline@v0.12.0
+        run: |
+          mkdir -p zap-reports
+          set +e
+          docker pull ghcr.io/zaproxy/zaproxy:stable -q
+          docker run --rm --network host -u root \
+            -v "$GITHUB_WORKSPACE:/zap/wrk/:rw" \
+            ghcr.io/zaproxy/zaproxy:stable \
+            zap-baseline.py -t "${{ inputs.target_url }}" -a \
+              -J /zap/wrk/zap-reports/report_json.json \
+              -w /zap/wrk/zap-reports/report_md.md \
+              -r /zap/wrk/zap-reports/report_html.html
+          status=$?
+          set -e
+          if [ $status -gt 2 ]; then
+            echo "ZAP failed with exit code $status"
+            exit $status
+          fi
+
+      - name: Upload ZAP Reports
+        uses: actions/upload-artifact@v4
         with:
-          # POPRAWKA: Uzywamy adresu przekazanego z glownego workflowa
-          target: ${{ inputs.target_url }}
-          # Te opcje pozwalają na niekrytyczne błędy w DAST
-          fail_action: false
-          allow_issue_writing: false
-          cmd_options: "-a"
-          docker_options: "--network host"
-          artifact_name: ZAPReports
+          name: zap-reports
+          path: zap-reports
           
       # Dodatkowy krok do weryfikacji wyniku (opcjonalny, ale przydatny)
       - name: DAST Result Check
         run: |
           echo "Skan DAST zakończony pomyślnie. Aplikacja przechodzi do wdrożenia Produkcyjnego."
+
+      - name: Stop Django server
+        if: ${{ inputs.start_local_backend && always() }}
+        run: |
+          if [ -f /tmp/django.pid ]; then
+            kill "$(cat /tmp/django.pid)" || true
+          fi
