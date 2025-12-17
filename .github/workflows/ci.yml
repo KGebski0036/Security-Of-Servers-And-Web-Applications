@@ -144,11 +144,13 @@ jobs:
       - run: echo "Deployment to staging simulated successfully"
 
   dast_scan:
-    name: DAST Scan (Simulated)
-    runs-on: ubuntu-latest
+    name: DAST Scan
     needs: [deployment_staging]
-    steps:
-      - run: echo "DAST scan simulated successfully"
+    uses: ./.github/workflows/dast.yml
+    with:
+      target_url: http://localhost:8000/
+      healthcheck_url: http://localhost:8000/api/whoami/
+      start_local_backend: true
 
   deployment_production:
     name: Deploy to Production (Simulated)

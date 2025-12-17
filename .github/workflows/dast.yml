@@ -4,10 +4,21 @@ on:
   workflow_call: # POPRAWKA: Umożliwia wywołanie przez ci.yml (w przeciwieństwie do workflow_dispatch)
     # Definicja zmiennych/sekretów, które przyjmujemy od wywołującego workflowa (ci.yml)
     inputs:
-      staging_url:
-        required: true
+      target_url:
+        required: false
         type: string
-        description: 'URL serwera Staging do skanowania DAST.'
+        default: 'http://localhost:8000/'
+        description: 'URL aplikacji do skanowania DAST (lokalny lub staging).'
+      healthcheck_url:
+        required: false
+        type: string
+        default: 'http://localhost:8000/api/whoami/'
+        description: 'Opcjonalny URL healthcheck (np. https://.../api/whoami/). Gdy pusty, sprawdzamy tylko dostepnosc target_url.'
+      start_local_backend:
+        required: false
+        type: boolean
+        default: true
+        description: 'Czy uruchamiac lokalny backend Django przed skanem.'
 
 jobs:
   run_dast:
@@ -16,17 +27,71 @@ jobs:
     
     steps:
       - uses: actions/checkout@v4
+
+      - name: Set up Python
+        if: ${{ inputs.start_local_backend }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend dependencies
+        if: ${{ inputs.start_local_backend }}
+        working-directory: backend
+        run: pip install -r requirements.txt
+
+      - name: Start Django server
+        if: ${{ inputs.start_local_backend }}
+        working-directory: backend
+        env:
+          USE_SQLITE: "1"
+          SECRET_KEY: dummy
+          DEBUG: "1"
+          DB_NAME: dummy
+          DB_USER: dummy
+          DB_PASSWORD: dummy
+          DB_HOST: localhost
+          DB_PORT: "5432"
+        run: |
+          python manage.py migrate --noinput
+          python manage.py runserver 0.0.0.0:8000 > /tmp/django.log 2>&1 &
+          echo $! > /tmp/django.pid
       
-      # ZAP skanuje ZDALNY serwer Staging, nie uruchamia lokalnej aplikacji!
+      - name: Wait for target to respond
+        run: |
+          health_url="${{ inputs.healthcheck_url }}"
+          if [ -z "$health_url" ]; then
+            health_url="${{ inputs.target_url }}"
+            curl_flags="-sS"
+          else
+            curl_flags="-fsS"
+          fi
+
+          for i in $(seq 1 30); do
+            if curl $curl_flags -o /dev/null "$health_url"; then
+              exit 0
+            fi
+            sleep 2
+          done
+
+          echo "Backend nie wstal w oczekiwanym czasie: $health_url"
+          if [ -f /tmp/django.log ]; then
+            cat /tmp/django.log
+          fi
+          exit 1
+
+      # ZAP skanuje target_url (lokalny lub staging).
       - name: OWASP ZAP Baseline Scan
         uses: zaproxy/action-baseline@v0.12.0
         with:
-          # POPRAWKA: Używamy adresu przekazanego z głównego workflowa
-          target: ${{ inputs.staging_url }}
+          # POPRAWKA: Uzywamy adresu przekazanego z glownego workflowa
+          target: ${{ inputs.target_url }}
           # Te opcje pozwalają na niekrytyczne błędy w DAST
           fail_action: false
           allow_issue_writing: false
           cmd_options: "-a"
+          docker_options: "--network host"
           artifact_name: ZAPReports
           
       # Dodatkowy krok do weryfikacji wyniku (opcjonalny, ale przydatny)
