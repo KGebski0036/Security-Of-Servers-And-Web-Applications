@@ -269,7 +269,7 @@ The project uses GitHub Actions for continuous verification and Terraform for co
 
 1. Work on `main`/`branch2` to have CI run automatically on push and PR.
 2. Mirror CI locally for backend with `USE_SQLITE=1 python manage.py test`; for frontend run `npm ci && npm run lint && npm run build`.
-3. Trigger **DAST Scan** manually (`workflow_dispatch`) to run OWASP ZAP Baseline against a locally booted backend with sample data; results are available as workflow artifacts.
+3. **DAST** runs automatically in CI (job `dast_scan`): it boots Django with SQLite on the runner, scans `http://localhost:8000/api/` using OWASP ZAP Baseline, and uploads the results as a `zap-reports` artifact.
 4. Before releasing, build & push the backend Docker image to ECR and re-run Terraform as described in [3.1](#31-quick-start-deploying-with-terraform); adjust `backend_image_tag` if you want to pin a specific version.
 
 ### 4.3 CI/CD Security Elements (L6)
@@ -277,7 +277,7 @@ The project uses GitHub Actions for continuous verification and Terraform for co
 - **SAST backend:** Bandit scans Python code with a strict policy and fails on findings.
 - **Dependency Scanning (SCA):** The project uses `safety` to audit `requirements.txt` dependencies against known vulnerability database (CVEs). This ensures no insecure libraries are introduced into the backend.
 - **SAST frontend:** `npm audit --production --audit-level=moderate` blocks merges on actionable dependency issues; lint/build keep the bundle type-safe.
-- **DAST:** OWASP ZAP Baseline is available on demand to probe the running API without hitting cloud resources.
+- **DAST:** OWASP ZAP Baseline runs in CI against a locally started Django server on the runner (ZAP container uses host networking). Results are published as the `zap-reports` artifact; you can override workflow inputs to scan a staging URL instead.
 - **Secrets handling:** CI uses dummy values; production secrets stay in AWS Secrets Manager and are only fetched by App Runner at runtime.
 - **Supply chain:** Docker images are built on trusted developer machines and pushed directly to the ECR repository created by Terraform, minimizing intermediary hops.
 - **Pre-commit Secret Scanning:** Local `pre-commit` hooks using **GitLeaks** block developers from accidentally committing passwords, API keys, or sensitive tokens to the repository.
