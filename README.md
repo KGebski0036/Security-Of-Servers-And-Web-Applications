@@ -275,6 +275,7 @@ The project uses GitHub Actions for continuous verification and Terraform for co
 ### 4.3 CI/CD Security Elements (L6)
 
 - **SAST backend:** Bandit scans Python code with a strict policy and fails on findings.
+- **Dependency Scanning (SCA):** The project uses `safety` to audit `requirements.txt` dependencies against known vulnerability database (CVEs). This ensures no insecure libraries are introduced into the backend.
 - **SAST frontend:** `npm audit --production --audit-level=moderate` blocks merges on actionable dependency issues; lint/build keep the bundle type-safe.
 - **DAST:** OWASP ZAP Baseline is available on demand to probe the running API without hitting cloud resources.
 - **Secrets handling:** CI uses dummy values; production secrets stay in AWS Secrets Manager and are only fetched by App Runner at runtime.

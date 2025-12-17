@@ -5,7 +5,7 @@ psycopg2-binary>=2.9.9
 python-decouple>=3.8
 django-cors-headers>=4.3.1
 Pillow>=10.0.0
+safety>=3.2.0
 django-redis
 bleach>=6.3.0
-
 urllib3>=2.4.0
