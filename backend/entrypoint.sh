@@ -8,14 +8,14 @@ done
 echo "Database is up!"
 
 echo "Running migrations..."
-python manage.py migrate --noinput
+gosu root python manage.py migrate --noinput
 
 echo "Collecting static files..."
-python manage.py collectstatic --noinput || true
+gosu root python manage.py collectstatic --noinput || true
 
 echo "Create admin account and some data"
-python manage.py create_sample_data
+gosu root python manage.py create_sample_data
 
 echo "Starting server..."
-exec "$@"
+exec gosu nonrootuser "$@"
 

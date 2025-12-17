@@ -2,9 +2,13 @@ name: CI
 
 on:
   push:
-    branches: [main, branch2]
+    branches: [main, branch2, feature/ci-cd(5)]
   pull_request:
-    branches: [main, branch2]
+    branches: [main, branch2, feature/ci-cd(5)]
+
+permissions:
+  contents: read
+  packages: write
 
 jobs:
   backend:
@@ -20,14 +24,11 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          cache: "pip"
+          cache: pip
 
       - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
-          pip install bandit
+        run: pip install -r requirements.txt bandit
 
-      # SAST: Python static analysis (Bandit)
       - name: SAST - Bandit security scan
         run: bandit -r . -ll -ii
 
@@ -41,7 +42,23 @@ jobs:
           DB_PASSWORD: dummy
           DB_HOST: localhost
           DB_PORT: "5432"
+          GITHUB_ACTIONS: "true"
         run: python manage.py test
+
+  iac_security_scan:
+    name: IaC Security Scan (Checkov)
+    runs-on: ubuntu-latest
+    needs: [backend]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Checkov IaC Scanner
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: terraform/
+          framework: terraform
+          soft_fail: false
+          check: CKV_AWS_1,CKV_AWS_10,CKV_AWS_21
 
   frontend:
     name: Frontend build
@@ -56,15 +73,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "npm"
+          cache: npm
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
         run: npm ci
 
-      # SAST: Node dependency vulnerability check
-      ##Skanowanie SAST frontendu odbywa się poprzez npm audit. Wyniki są raportowane, ale nie blokują merge’y, ponieważ część podatności pochodzi z zależności transitywnych (np. esbuild, glob) i nie może być naprawiona na poziomie projektu. Pipeline raportuje znalezione problemy, co pozwala na ich monitorowanie.
-      - name: SAST - npm audit (prod only, blocking)
+      - name: SAST - npm audit
         run: npm audit --production --audit-level=moderate
 
       - name: Lint
@@ -74,3 +89,62 @@ jobs:
         env:
           VITE_API_BASE_URL: http://localhost:8000/api
         run: npm run build
+
+  publish_image:
+    name: Build & Push Docker Image
+    runs-on: ubuntu-latest
+    needs: [backend, frontend, iac_security_scan]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build image for Trivy
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          tags: ghcr.io/kgebski0036/security-of-servers-and-web-applications/backend:scan-test
+          load: true
+
+      - name: Trivy scan
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: ghcr.io/kgebski0036/security-of-servers-and-web-applications/backend:scan-test
+          exit-code: "1"
+          severity: CRITICAL
+
+      - name: Push Docker image to GHCR
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: true
+          tags: |
+            ghcr.io/kgebski0036/security-of-servers-and-web-applications/backend:${{ github.sha }}
+            ghcr.io/kgebski0036/security-of-servers-and-web-applications/backend:latest
+
+  deployment_staging:
+    name: Deploy to Staging (Simulated)
+    runs-on: ubuntu-latest
+    needs: [publish_image]
+    steps:
+      - run: echo "Deployment to staging simulated successfully"
+
+  dast_scan:
+    name: DAST Scan (Simulated)
+    runs-on: ubuntu-latest
+    needs: [deployment_staging]
+    steps:
+      - run: echo "DAST scan simulated successfully"
+
+  deployment_production:
+    name: Deploy to Production (Simulated)
+    runs-on: ubuntu-latest
+    needs: [dast_scan]
+    steps:
+      - run: echo "Deployment to production simulated successfully"

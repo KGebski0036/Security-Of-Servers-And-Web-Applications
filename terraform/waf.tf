@@ -364,7 +364,9 @@ resource "aws_s3_bucket" "waf_logs" {
   provider      = aws.us_east_1
   bucket        = "${var.project_name}-waf-logs-${random_id.waf_logs.hex}"
   force_destroy = true
-
+  versioning {
+      enabled = true
+    }
   tags = {
     Project = var.project_name
   }
