@@ -24,6 +24,52 @@ resource "aws_cloudfront_origin_access_control" "oac" {
   signing_behavior                  = "always"
 }
 
+resource "aws_cloudfront_response_headers_policy" "security_headers" {
+  name = "${var.project_name}-security-headers"
+
+  security_headers_config {
+    content_security_policy {
+      content_security_policy = "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data: https:; connect-src 'self' https:; media-src 'self' data: https:"
+      override                = true
+    }
+
+    content_type_options {
+      override = true
+    }
+
+    frame_options {
+      frame_option = "DENY"
+      override     = true
+    }
+
+    referrer_policy {
+      referrer_policy = "strict-origin-when-cross-origin"
+      override        = true
+    }
+
+    strict_transport_security {
+      access_control_max_age_sec = 31536000
+      include_subdomains         = true
+      preload                    = false
+      override                   = true
+    }
+
+    xss_protection {
+      protection = true
+      mode_block = true
+      override   = true
+    }
+  }
+
+  custom_headers_config {
+    items {
+      header   = "Permissions-Policy"
+      value    = "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=(), interest-cohort=()"
+      override = true
+    }
+  }
+}
+
 module "cloudfront" {
   source  = "terraform-aws-modules/cloudfront/aws"
   version = "5.0.1"
@@ -50,6 +96,8 @@ module "cloudfront" {
 
     cache_policy_id          = data.aws_cloudfront_cache_policy.cache_optimized.id
     origin_request_policy_id = data.aws_cloudfront_origin_request_policy.s3_basic.id
+
+    response_headers_policy_id = aws_cloudfront_response_headers_policy.security_headers.id
   }
 
   # Custom error responses for SPA routing
