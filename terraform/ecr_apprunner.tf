@@ -33,6 +33,22 @@ resource "aws_security_group" "apprunner_sg" {
     description     = "Allow outbound PostgreSQL to RDS"
   }
 
+  egress {
+    from_port   = 53
+    to_port     = 53
+    protocol    = "udp"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "Allow outbound DNS (UDP)"
+  }
+  
+  egress {
+    from_port   = 53
+    to_port     = 53
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "Allow outbound DNS (TCP)"
+  }
+
   tags = { Name = "${var.project_name}-apprunner-sg" }
 }
 

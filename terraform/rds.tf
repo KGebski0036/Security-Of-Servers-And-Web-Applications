@@ -4,13 +4,6 @@ resource "aws_security_group" "rds" {
   description = "Allow access to RDS from private subnets and admin CIDR"
   vpc_id      = module.vpc.vpc_id
 
-  ingress {
-    description     = "From VPC private subnets"
-    from_port       = 5432
-    to_port         = 5432
-    protocol        = "tcp"
-    security_groups = [aws_security_group.apprunner_sg.id]
-  }
 
   ingress {
     description = "Admin access (replace with your IP)"
@@ -20,14 +13,17 @@ resource "aws_security_group" "rds" {
     cidr_blocks = [var.admin_cidr]
   }
 
- # egress {
- #   from_port   = 0
- #   to_port     = 0
- #   protocol    = "-1"
- #   cidr_blocks = ["0.0.0.0/0"]
- #}
-
   tags = { Name = "${var.project_name}-rds-sg" }
+}
+
+resource "aws_security_group_rule" "rds_ingress_apprunner" {
+  type                     = "ingress"
+  from_port                = 5432
+  to_port                  = 5432
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.rds.id
+  source_security_group_id = aws_security_group.apprunner_sg.id
+  description              = "From App Runner SG"
 }
 
 module "db" {
