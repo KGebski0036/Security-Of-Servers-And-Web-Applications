@@ -15,6 +15,7 @@ module "frontend_bucket" {
   tags = { Project = var.project_name }
 }
 
+# Create CloudFront Origin Access Control (OAC) (recommended over old OAI)
 resource "aws_cloudfront_origin_access_control" "oac" {
   name                              = "${var.project_name}-oac"
   description                       = "OAC for ${var.project_name} S3"
@@ -99,6 +100,8 @@ module "cloudfront" {
     response_headers_policy_id = aws_cloudfront_response_headers_policy.security_headers.id
   }
 
+  # Custom error responses for SPA routing
+  # Return index.html for 403 and 404 errors to support client-side routing
   custom_error_response = [
     {
       error_code            = 403
@@ -131,6 +134,7 @@ module "cloudfront" {
   }
 }
 
+# S3 Bucket Policy - Applied AFTER CloudFront is created to avoid circular dependency
 resource "aws_s3_bucket_policy" "frontend_bucket_policy" {
   bucket = module.frontend_bucket.s3_bucket_id
 
